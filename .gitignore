@@ -7,20 +7,25 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies and build outputs
 node_modules
 dist
 dist-ssr
 *.local
+*.tsbuildinfo
+
+# Environment variables
 .env
 .env.*
 !.env.example
 
-
-# Editor directories and files
+# Editor directories and OS files
 .vscode/*
 !.vscode/extensions.json
 .idea
 .DS_Store
+Thumbs.db
+Desktop.ini
 *.suo
 *.ntvs*
 *.njsproj
@@ -30,3 +35,4 @@ dist-ssr
 # AI Agent & Antigravity IDE
 .agent/
 .antigravity/
+.system_generated/
