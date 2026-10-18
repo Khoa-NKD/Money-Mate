@@ -1,11 +1,33 @@
 import { useState, type FormEvent } from 'react';
 import { useCategories } from '../../hooks/useCategories';
 import type { Category } from '../../types/database';
+import {
+  FolderIcon,
+  PlusIcon,
+  EditIcon,
+  TrashIcon,
+  CheckIcon,
+  AlertTriangleIcon,
+  XIcon,
+  DynamicCategoryIcon,
+} from '../ui/Icons';
 
 interface CategoryManagerProps {
   /** Callback được gọi khi danh mục được thêm, sửa hoặc xóa để các component khác đồng bộ */
   onCategoriesChange?: () => void;
 }
+
+// Bảng màu sắc tinh tế cho quản lý tài chính hiện đại
+const CURATED_COLORS = [
+  '#10B981', // Xanh ngọc - Lương, Thu nhập
+  '#EF4444', // Đỏ - Ăn uống, Chi tiêu chính
+  '#F59E0B', // Cam hổ phách - Mua sắm
+  '#3B82F6', // Xanh dương - Di chuyển, Xe cộ
+  '#8B5CF6', // Tím thạch anh - Khác, Đầu tư
+  '#EC4899', // Hồng đào - Giải trí, Làm đẹp
+  '#06B6D4', // Cyan - Dịch vụ số, Tiện ích
+  '#6366F1', // Indigo - Học tập, Phát triển
+];
 
 // Bảng gợi ý emoji phổ biến cho quản lý tài chính
 const POPULAR_EMOJIS = [
@@ -77,7 +99,7 @@ export function CategoryManager({ onCategoriesChange }: CategoryManagerProps) {
     if (result.error) {
       setFormError(result.error);
     } else {
-      setSuccessMessage(`Đã thêm danh mục "${trimmed}" thành công!`);
+      setSuccessMessage(`Đã thêm danh mục '${trimmed}' thành công!`);
       setName('');
       setColor('#10B981');
       setIcon('📁');
@@ -128,7 +150,7 @@ export function CategoryManager({ onCategoriesChange }: CategoryManagerProps) {
     if (result.error) {
       setFormError(result.error);
     } else {
-      setSuccessMessage(`Đã cập nhật danh mục "${trimmed}"!`);
+      setSuccessMessage(`Đã cập nhật danh mục '${trimmed}'!`);
       cancelEditing();
       onCategoriesChange?.();
       setTimeout(() => setSuccessMessage(null), 3500);
@@ -178,7 +200,7 @@ export function CategoryManager({ onCategoriesChange }: CategoryManagerProps) {
         setReferencedCount(result.referencedCount);
       }
     } else {
-      setSuccessMessage(`Đã xóa danh mục "${deleteTarget.name}".`);
+      setSuccessMessage(`Đã xóa danh mục '${deleteTarget.name}'.`);
       closeDeleteModal();
       onCategoriesChange?.();
       setTimeout(() => setSuccessMessage(null), 3500);
@@ -201,7 +223,7 @@ export function CategoryManager({ onCategoriesChange }: CategoryManagerProps) {
     if (!result.success) {
       setDeleteError(result.error || 'Lỗi khi chuyển đổi và xóa.');
     } else {
-      setSuccessMessage(`Đã chuyển đổi giao dịch và xóa danh mục "${deleteTarget.name}".`);
+      setSuccessMessage(`Đã chuyển đổi giao dịch và xóa danh mục '${deleteTarget.name}'.`);
       closeDeleteModal();
       onCategoriesChange?.();
       setTimeout(() => setSuccessMessage(null), 3500);
@@ -212,45 +234,56 @@ export function CategoryManager({ onCategoriesChange }: CategoryManagerProps) {
   const otherCategories = categories.filter((c) => c.id !== deleteTarget?.id);
 
   return (
-    <div className="mm-card mm-category-manager-card">
-      <div className="mm-card-header">
-        <div className="mm-tx-header-title">
-          <span className="mm-header-icon">📁</span>
-          <h3>Quản Lý Danh Mục</h3>
+    <div className='mm-card mm-category-manager-card'>
+      <div className='mm-card-header'>
+        <div className='mm-tx-header-title'>
+          <div className='mm-header-icon-box'>
+            <FolderIcon size={20} />
+          </div>
+          <div>
+            <h3>Quản Lý Danh Mục</h3>
+            <p className='mm-card-subtitle'>Tùy chỉnh nhóm chi tiêu & thu nhập cá nhân</p>
+          </div>
         </div>
-        <span className="mm-badge badge-info">{categories.length} danh mục</span>
+        <span className='mm-badge badge-info'>{categories.length} danh mục</span>
       </div>
 
       {/* Thông báo thông tin & lỗi */}
       {successMessage && (
-        <div className="mm-alert mm-alert-success" role="alert" style={{ marginBottom: '1rem' }}>
-          <span className="mm-alert-icon">✅</span>
-          <div className="mm-alert-content">{successMessage}</div>
+        <div className='mm-alert mm-alert-success' role='alert'>
+          <span className='mm-alert-icon'>
+            <CheckIcon size={18} />
+          </span>
+          <div className='mm-alert-content'>{successMessage}</div>
         </div>
       )}
 
       {(formError || error) && (
-        <div className="mm-alert mm-alert-error" role="alert" style={{ marginBottom: '1rem' }}>
-          <span className="mm-alert-icon">⚠️</span>
-          <div className="mm-alert-content">{formError || error}</div>
+        <div className='mm-alert mm-alert-error' role='alert'>
+          <span className='mm-alert-icon'>
+            <AlertTriangleIcon size={18} />
+          </span>
+          <div className='mm-alert-content'>{formError || error}</div>
         </div>
       )}
 
       {/* 1. Form thêm mới danh mục */}
-      <div className="mm-cat-add-section">
-        <h4 className="mm-cat-subtitle">➕ Thêm Danh Mục Mới</h4>
-        <form className="mm-cat-form" onSubmit={handleAddSubmit}>
-          <div className="mm-cat-form-row">
+      <div className='mm-cat-add-section'>
+        <h4 className='mm-cat-subtitle'>
+          <PlusIcon size={16} /> Thêm Danh Mục Mới
+        </h4>
+        <form className='mm-cat-form' onSubmit={handleAddSubmit}>
+          <div className='mm-cat-form-row'>
             {/* Tên danh mục */}
-            <div className="mm-form-group mm-cat-flex-name">
-              <label htmlFor="cat-name" className="mm-form-label">
-                Tên danh mục <span className="text-danger">*</span>
+            <div className='mm-form-group mm-cat-flex-name'>
+              <label htmlFor='cat-name' className='mm-form-label'>
+                Tên danh mục <span className='text-danger'>*</span>
               </label>
               <input
-                id="cat-name"
-                type="text"
-                className="mm-input"
-                placeholder="Ví dụ: Ăn uống, Tiền điện..."
+                id='cat-name'
+                type='text'
+                className='mm-input'
+                placeholder='Ví dụ: Ăn uống, Tiền điện...'
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 disabled={isAdding}
@@ -258,34 +291,49 @@ export function CategoryManager({ onCategoriesChange }: CategoryManagerProps) {
               />
             </div>
 
-            {/* Màu sắc: input type="color" */}
-            <div className="mm-form-group mm-cat-flex-color">
-              <label htmlFor="cat-color" className="mm-form-label">
+            {/* Màu sắc: swatches + color picker */}
+            <div className='mm-form-group mm-cat-flex-color'>
+              <label htmlFor='cat-color' className='mm-form-label'>
                 Màu sắc
               </label>
-              <div className="mm-color-input-wrapper">
-                <input
-                  id="cat-color"
-                  type="color"
-                  className="mm-color-picker"
-                  value={color}
-                  onChange={(e) => setColor(e.target.value)}
-                  disabled={isAdding}
-                />
-                <span className="mm-color-code">{color.toUpperCase()}</span>
+              <div className='mm-color-input-wrapper'>
+                <div className='mm-swatch-list'>
+                  {CURATED_COLORS.map((c) => (
+                    <button
+                      key={c}
+                      type='button'
+                      className={`mm-swatch-pill ${color.toLowerCase() === c.toLowerCase() ? 'active' : ''}`}
+                      style={{ backgroundColor: c }}
+                      onClick={() => setColor(c)}
+                      title={`Chọn màu ${c}`}
+                    />
+                  ))}
+                </div>
+                <div className='mm-custom-color-pick'>
+                  <input
+                    id='cat-color'
+                    type='color'
+                    className='mm-color-picker'
+                    value={color}
+                    onChange={(e) => setColor(e.target.value)}
+                    disabled={isAdding}
+                    title='Tùy chỉnh mã màu'
+                  />
+                  <span className='mm-color-code'>{color.toUpperCase()}</span>
+                </div>
               </div>
             </div>
 
-            {/* Icon: emoji */}
-            <div className="mm-form-group mm-cat-flex-icon">
-              <label htmlFor="cat-icon" className="mm-form-label">
-                Biểu tượng (Emoji)
+            {/* Icon: emoji / biểu tượng */}
+            <div className='mm-form-group mm-cat-flex-icon'>
+              <label htmlFor='cat-icon' className='mm-form-label'>
+                Biểu tượng
               </label>
               <input
-                id="cat-icon"
-                type="text"
-                className="mm-input mm-emoji-input"
-                placeholder="📁"
+                id='cat-icon'
+                type='text'
+                className='mm-input mm-emoji-input'
+                placeholder='📁'
                 value={icon}
                 onChange={(e) => setIcon(e.target.value)}
                 maxLength={4}
@@ -295,13 +343,13 @@ export function CategoryManager({ onCategoriesChange }: CategoryManagerProps) {
           </div>
 
           {/* Gợi ý chọn nhanh emoji */}
-          <div className="mm-cat-emoji-palette">
-            <span className="mm-palette-label">Gợi ý emoji:</span>
-            <div className="mm-emoji-list">
+          <div className='mm-cat-emoji-palette'>
+            <span className='mm-palette-label'>Biểu tượng gợi ý:</span>
+            <div className='mm-emoji-list'>
               {POPULAR_EMOJIS.map((emoji) => (
                 <button
                   key={emoji}
-                  type="button"
+                  type='button'
                   className={`mm-emoji-pill ${icon === emoji ? 'active' : ''}`}
                   onClick={() => setIcon(emoji)}
                   title={`Chọn emoji ${emoji}`}
@@ -312,80 +360,96 @@ export function CategoryManager({ onCategoriesChange }: CategoryManagerProps) {
             </div>
           </div>
 
-          <button
-            type="submit"
-            className="mm-btn mm-btn-primary mm-cat-submit-btn"
-            disabled={isAdding || !name.trim()}
-          >
-            {isAdding ? '⏳ Đang lưu...' : '➕ Thêm Danh Mục'}
-          </button>
+          <div className='mm-cat-submit-row'>
+            <button
+              type='submit'
+              className='mm-btn mm-btn-primary mm-cat-submit-btn'
+              disabled={isAdding || !name.trim()}
+            >
+              {isAdding ? (
+                <>
+                  <span className='mm-spinner'></span> Đang lưu...
+                </>
+              ) : (
+                <>
+                  <PlusIcon size={16} /> Thêm Danh Mục
+                </>
+              )}
+            </button>
+          </div>
         </form>
       </div>
 
-      <hr className="mm-divider" />
+      <hr className='mm-divider' />
 
-      {/* 2. Danh sách danh mục (List danh mục của user, order by name) */}
-      <div className="mm-cat-list-section">
-        <h4 className="mm-cat-subtitle">📋 Danh Sách Của Bạn (A - Z)</h4>
+      {/* 2. Danh sách danh mục */}
+      <div className='mm-cat-list-section'>
+        <div className='mm-cat-list-header'>
+          <h4 className='mm-cat-subtitle'>
+            <FolderIcon size={16} /> Danh Sách Của Bạn ({categories.length})
+          </h4>
+        </div>
 
         {loading && categories.length === 0 ? (
-          <div className="mm-tx-empty-state">
-            <span className="mm-spinner"></span>
+          <div className='mm-tx-empty-state'>
+            <span className='mm-spinner'></span>
             <p>Đang tải danh mục...</p>
           </div>
         ) : categories.length === 0 ? (
-          <div className="mm-tx-empty-state">
-            <span className="mm-empty-icon">📁</span>
+          <div className='mm-tx-empty-state'>
+            <div className='mm-empty-icon-wrap'>
+              <FolderIcon size={36} />
+            </div>
             <h4>Chưa có danh mục nào</h4>
             <p>Hãy thêm danh mục đầu tiên của bạn ở biểu mẫu bên trên.</p>
           </div>
         ) : (
-          <ul className="mm-cat-items-list">
+          <ul className='mm-cat-items-list'>
             {categories.map((cat) => {
               const isEditing = editingId === cat.id;
               const catColor = cat.color || '#10B981';
 
               if (isEditing) {
                 return (
-                  <li key={cat.id} className="mm-cat-item mm-cat-item-editing">
-                    <div className="mm-cat-edit-form">
-                      <div className="mm-cat-edit-inputs">
+                  <li key={cat.id} className='mm-cat-item mm-cat-item-editing'>
+                    <div className='mm-cat-edit-form'>
+                      <div className='mm-cat-edit-inputs'>
                         <input
-                          type="text"
-                          className="mm-input mm-cat-inline-name"
+                          type='text'
+                          className='mm-input mm-cat-inline-name'
                           value={editName}
                           onChange={(e) => setEditName(e.target.value)}
-                          placeholder="Tên danh mục"
+                          placeholder='Tên danh mục'
                           required
                         />
-                        <div className="mm-color-input-wrapper">
+                        <div className='mm-color-input-wrapper'>
                           <input
-                            type="color"
-                            className="mm-color-picker"
+                            type='color'
+                            className='mm-color-picker'
                             value={editColor}
                             onChange={(e) => setEditColor(e.target.value)}
                           />
                         </div>
                         <input
-                          type="text"
-                          className="mm-input mm-emoji-input"
+                          type='text'
+                          className='mm-input mm-emoji-input'
                           value={editIcon}
                           onChange={(e) => setEditIcon(e.target.value)}
                           maxLength={4}
                         />
                       </div>
-                      <div className="mm-cat-edit-actions">
+                      <div className='mm-cat-edit-actions'>
                         <button
-                          type="button"
-                          className="mm-btn mm-btn-sm mm-btn-outline"
+                          type='button'
+                          className='mm-btn mm-btn-sm mm-btn-outline'
                           onClick={cancelEditing}
                           disabled={isUpdating}
                         >
                           Hủy
                         </button>
                         <button
-                          type="button"
-                          className="mm-btn mm-btn-sm mm-btn-primary"
+                          type='button'
+                          className='mm-btn mm-btn-sm mm-btn-primary'
                           onClick={() => handleUpdateSave(cat.id)}
                           disabled={isUpdating || !editName.trim()}
                         >
@@ -398,40 +462,42 @@ export function CategoryManager({ onCategoriesChange }: CategoryManagerProps) {
               }
 
               return (
-                <li key={cat.id} className="mm-cat-item">
-                  <div className="mm-cat-item-left">
+                <li key={cat.id} className='mm-cat-item'>
+                  <div className='mm-cat-item-left'>
                     <div
-                      className="mm-cat-icon-badge"
+                      className='mm-cat-icon-badge'
                       style={{
-                        backgroundColor: `${catColor}20`,
+                        backgroundColor: `${catColor}18`,
                         color: catColor,
-                        borderColor: `${catColor}50`,
+                        borderColor: `${catColor}40`,
                       }}
                     >
-                      {cat.icon || '📁'}
+                      <DynamicCategoryIcon icon={cat.icon} size={18} />
                     </div>
-                    <div className="mm-cat-item-details">
-                      <span className="mm-cat-name">{cat.name}</span>
-                      <span className="mm-cat-color-dot" style={{ backgroundColor: catColor }} title={catColor} />
+                    <div className='mm-cat-item-details'>
+                      <span className='mm-cat-name'>{cat.name}</span>
+                      <span className='mm-cat-color-dot' style={{ backgroundColor: catColor }} title={catColor} />
                     </div>
                   </div>
 
-                  <div className="mm-cat-item-right">
+                  <div className='mm-cat-item-right'>
                     <button
-                      type="button"
-                      className="mm-action-btn mm-edit-btn"
-                      title="Sửa danh mục"
+                      type='button'
+                      className='mm-action-btn mm-edit-btn'
+                      title='Sửa danh mục'
+                      aria-label={`Sửa danh mục ${cat.name}`}
                       onClick={() => startEditing(cat)}
                     >
-                      ✏️
+                      <EditIcon size={15} />
                     </button>
                     <button
-                      type="button"
-                      className="mm-action-btn mm-delete-btn"
-                      title="Xóa danh mục"
+                      type='button'
+                      className='mm-action-btn mm-delete-btn'
+                      title='Xóa danh mục'
+                      aria-label={`Xóa danh mục ${cat.name}`}
                       onClick={() => openDeleteModal(cat)}
                     >
-                      🗑️
+                      <TrashIcon size={15} />
                     </button>
                   </div>
                 </li>
@@ -441,68 +507,73 @@ export function CategoryManager({ onCategoriesChange }: CategoryManagerProps) {
         )}
       </div>
 
-      {/* 3. Modal xác nhận xóa danh mục (Bảo vệ: không xóa cứng khi có giao dịch tham chiếu) */}
+      {/* 3. Modal xác nhận xóa danh mục */}
       {deleteTarget && (
-        <div className="mm-modal-backdrop" role="dialog" aria-modal="true">
-          <div className="mm-modal-container mm-confirm-modal">
-            <div className="mm-modal-header">
-              <div className="mm-modal-title-row">
-                <span className="mm-modal-icon-danger">⚠️</span>
-                <h3>Xóa Danh Mục "{deleteTarget.name}"</h3>
+        <div className='mm-modal-backdrop' role='dialog' aria-modal='true'>
+          <div className='mm-modal-container mm-confirm-modal'>
+            <div className='mm-modal-header'>
+              <div className='mm-modal-title-row'>
+                <div className='mm-modal-icon-wrap danger'>
+                  <AlertTriangleIcon size={20} />
+                </div>
+                <h3>Xóa Danh Mục '{deleteTarget.name}'</h3>
               </div>
               <button
-                type="button"
-                className="mm-modal-close-btn"
+                type='button'
+                className='mm-modal-close-btn'
                 onClick={closeDeleteModal}
                 disabled={isDeleting}
+                aria-label='Đóng'
               >
-                ✕
+                <XIcon size={18} />
               </button>
             </div>
 
-            <div className="mm-modal-body">
+            <div className='mm-modal-body'>
               {isCheckingRef ? (
                 <div style={{ textAlign: 'center', padding: '1.5rem' }}>
-                  <span className="mm-spinner"></span>
-                  <p style={{ marginTop: '0.75rem', color: '#64748b' }}>
+                  <span className='mm-spinner'></span>
+                  <p style={{ marginTop: '0.75rem', color: 'var(--mm-text-muted)' }}>
                     Đang kiểm tra giao dịch liên kết...
                   </p>
                 </div>
               ) : referencedCount !== null && referencedCount > 0 ? (
                 /* Có giao dịch tham chiếu: KHÔNG xóa cứng, báo lỗi và gợi ý đổi danh mục */
-                <div className="mm-cat-blocked-delete">
-                  <div className="mm-alert mm-alert-error" role="alert">
-                    <span className="mm-alert-icon">🚫</span>
-                    <div className="mm-alert-content">
-                      <strong>Không thể xóa cứng danh mục này!</strong>
+                <div className='mm-cat-blocked-delete'>
+                  <div className='mm-alert mm-alert-error' role='alert'>
+                    <span className='mm-alert-icon'>
+                      <AlertTriangleIcon size={18} />
+                    </span>
+                    <div className='mm-alert-content'>
+                      <strong>Không thể xóa trực tiếp danh mục này!</strong>
                       <p>
                         Hiện đang có <strong>{referencedCount} giao dịch</strong> trong sổ thu chi đang tham chiếu
-                        đến danh mục <strong>"{deleteTarget.name}"</strong>.
+                        đến danh mục <strong>'{deleteTarget.name}'</strong>.
                       </p>
                     </div>
                   </div>
 
-                  <div className="mm-cat-reassign-box">
-                    <p className="mm-cat-reassign-prompt">
-                      💡 <strong>Gợi ý:</strong> Bạn có thể chuyển toàn bộ <strong>{referencedCount} giao dịch</strong> sang
+                  <div className='mm-cat-reassign-box'>
+                    <p className='mm-cat-reassign-prompt'>
+                      Bạn có thể chuyển toàn bộ <strong>{referencedCount} giao dịch</strong> sang
                       danh mục khác dưới đây trước khi tiến hành xóa:
                     </p>
 
-                    <div className="mm-form-group">
-                      <label htmlFor="rep-cat" className="mm-form-label">
+                    <div className='mm-form-group'>
+                      <label htmlFor='rep-cat' className='mm-form-label'>
                         Chọn danh mục thay thế:
                       </label>
                       <select
-                        id="rep-cat"
-                        className="mm-input mm-select"
+                        id='rep-cat'
+                        className='mm-input mm-select'
                         value={replacementCategoryId}
                         onChange={(e) => setReplacementCategoryId(e.target.value)}
                         disabled={isDeleting}
                       >
-                        <option value="">-- Chuyển thành "Không có danh mục" --</option>
+                        <option value=''>-- Chuyển thành 'Không có danh mục' --</option>
                         {otherCategories.map((c) => (
                           <option key={c.id} value={c.id}>
-                            {c.icon ? `${c.icon} ` : '📁 '} {c.name}
+                            {c.name}
                           </option>
                         ))}
                       </select>
@@ -511,24 +582,26 @@ export function CategoryManager({ onCategoriesChange }: CategoryManagerProps) {
                 </div>
               ) : (
                 /* Không có giao dịch nào tham chiếu: Có thể an toàn xóa */
-                <p className="mm-confirm-desc">
-                  Bạn có chắc chắn muốn xóa danh mục <strong>"{deleteTarget.name}"</strong> không?
+                <p className='mm-confirm-desc'>
+                  Bạn có chắc chắn muốn xóa danh mục <strong>'{deleteTarget.name}'</strong> không?
                   Danh mục này hiện chưa có giao dịch nào tham chiếu và sẽ được xóa vĩnh viễn.
                 </p>
               )}
 
               {deleteError && (
-                <div className="mm-alert mm-alert-error" role="alert" style={{ marginTop: '1rem' }}>
-                  <span className="mm-alert-icon">⚠️</span>
-                  <div className="mm-alert-content">{deleteError}</div>
+                <div className='mm-alert mm-alert-error' role='alert' style={{ marginTop: '1rem' }}>
+                  <span className='mm-alert-icon'>
+                    <AlertTriangleIcon size={18} />
+                  </span>
+                  <div className='mm-alert-content'>{deleteError}</div>
                 </div>
               )}
             </div>
 
-            <div className="mm-modal-footer">
+            <div className='mm-modal-footer'>
               <button
-                type="button"
-                className="mm-btn mm-btn-outline"
+                type='button'
+                className='mm-btn mm-btn-outline'
                 onClick={closeDeleteModal}
                 disabled={isDeleting}
               >
@@ -536,35 +609,33 @@ export function CategoryManager({ onCategoriesChange }: CategoryManagerProps) {
               </button>
 
               {referencedCount !== null && referencedCount > 0 ? (
-                /* Nút chuyển đổi giao dịch rồi xóa */
                 <button
-                  type="button"
-                  className="mm-btn mm-btn-danger"
+                  type='button'
+                  className='mm-btn mm-btn-danger'
                   onClick={handleReassignAndDelete}
                   disabled={isDeleting}
                 >
                   {isDeleting ? (
-                    <span className="mm-btn-spinner-text">
-                      <span className="mm-spinner"></span> Đang chuyển đổi &amp; xóa...
+                    <span className='mm-btn-spinner-text'>
+                      <span className='mm-spinner'></span> Đang chuyển đổi &amp; xóa...
                     </span>
                   ) : (
-                    '🔄 Chuyển Giao Dịch & Xóa Danh Mục'
+                    'Chuyển Giao Dịch & Xóa Danh Mục'
                   )}
                 </button>
               ) : (
-                /* Nút xóa trực tiếp */
                 <button
-                  type="button"
-                  className="mm-btn mm-btn-danger"
+                  type='button'
+                  className='mm-btn mm-btn-danger'
                   onClick={handleConfirmDelete}
                   disabled={isDeleting || isCheckingRef}
                 >
                   {isDeleting ? (
-                    <span className="mm-btn-spinner-text">
-                      <span className="mm-spinner"></span> Đang xóa...
+                    <span className='mm-btn-spinner-text'>
+                      <span className='mm-spinner'></span> Đang xóa...
                     </span>
                   ) : (
-                    '🗑️ Xác Nhận Xóa'
+                    'Xác Nhận Xóa'
                   )}
                 </button>
               )}

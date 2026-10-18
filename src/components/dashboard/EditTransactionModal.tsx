@@ -2,19 +2,24 @@ import { useState, type FormEvent } from 'react';
 import { useUpdateTransaction } from '../../hooks/useUpdateTransaction';
 import { useCategories } from '../../hooks/useCategories';
 import type { TransactionListItem, TransactionType } from '../../types/database';
+import {
+  EditIcon,
+  XIcon,
+  AlertCircleIcon,
+  CheckIcon,
+  ArrowDownLeftIcon,
+  ArrowUpRightIcon,
+  CalendarIcon,
+  TagIcon,
+} from '../ui/Icons';
+import { formatMoney } from '../../lib/format';
 
 interface EditTransactionModalProps {
-  /** Thông tin giao dịch đang được chỉnh sửa */
   transaction: TransactionListItem;
-  /** Hàm đóng modal chỉnh sửa */
   onClose: () => void;
-  /** Callback sau khi cập nhật thành công */
   onSuccess: () => void;
 }
 
-/**
- * Modal chỉnh sửa thông tin giao dịch tài chính
- */
 export function EditTransactionModal({
   transaction,
   onClose,
@@ -23,7 +28,6 @@ export function EditTransactionModal({
   const { updateTransaction, loading, error } = useUpdateTransaction();
   const { categories, loading: categoriesLoading } = useCategories();
 
-  // Khởi tạo state từ dữ liệu giao dịch hiện tại
   const [type, setType] = useState<TransactionType>(transaction.type);
   const [amount, setAmount] = useState<string>(transaction.amount.toString());
   const [categoryId, setCategoryId] = useState<string>(transaction.category_id || '');
@@ -39,9 +43,6 @@ export function EditTransactionModal({
   const parsedAmount = parseFloat(amount);
   const isValidAmount = !isNaN(parsedAmount) && parsedAmount > 0;
 
-  /**
-   * Xử lý lưu các thay đổi
-   */
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setFormError(null);
@@ -70,167 +71,184 @@ export function EditTransactionModal({
   };
 
   return (
-    <div className="mm-modal-backdrop" role="dialog" aria-modal="true">
-      <div className="mm-modal-container mm-edit-modal">
+    <div className='mm-modal-backdrop' role='dialog' aria-modal='true' aria-labelledby='modal-edit-title'>
+      <div className='mm-modal-container mm-edit-modal'>
         {/* Header Modal */}
-        <div className="mm-modal-header">
-          <div className="mm-modal-title-row">
-            <span className="mm-header-icon">✏️</span>
-            <h3>Chỉnh Sửa Giao Dịch</h3>
+        <div className='mm-modal-header'>
+          <div className='mm-modal-title-row'>
+            <div className='mm-modal-icon-wrap primary'>
+              <EditIcon size={20} />
+            </div>
+            <h3 id='modal-edit-title'>Chỉnh Sửa Giao Dịch</h3>
           </div>
           <button
-            type="button"
-            className="mm-modal-close-btn"
+            type='button'
+            className='mm-modal-close-btn'
             onClick={onClose}
             disabled={loading}
-            aria-label="Đóng"
+            aria-label='Đóng'
           >
-            ✕
+            <XIcon size={18} />
           </button>
         </div>
 
-        {/* Cảnh báo lỗi */}
-        {(formError || error) && (
-          <div className="mm-alert mm-alert-error" role="alert" style={{ margin: '1rem 1.5rem 0' }}>
-            <span className="mm-alert-icon">⚠️</span>
-            <div className="mm-alert-content">{formError || error}</div>
-          </div>
-        )}
+        {/* Body Modal Form */}
+        <form className='mm-modal-body' onSubmit={handleSubmit}>
+          {(formError || error) && (
+            <div className='mm-alert mm-alert-error' role='alert' style={{ marginBottom: '1.25rem' }}>
+              <AlertCircleIcon size={18} className='mm-alert-icon' />
+              <div className='mm-alert-content'>{formError || error}</div>
+            </div>
+          )}
 
-        {/* Form chỉnh sửa */}
-        <form className="mm-modal-body mm-tx-form" onSubmit={handleSubmit}>
-          {/* 1. Chọn loại giao dịch */}
-          <div className="mm-form-group">
-            <label className="mm-form-label">Loại giao dịch</label>
-            <div className="mm-type-toggle-group">
+          {/* Segmented Type Toggle */}
+          <div className='mm-form-group'>
+            <label className='mm-form-label'>Loại giao dịch</label>
+            <div className='mm-segmented-control' role='radiogroup'>
               <button
-                type="button"
-                className={`mm-type-btn mm-type-expense ${type === 'expense' ? 'active' : ''}`}
+                type='button'
+                role='radio'
+                aria-checked={type === 'expense'}
+                className={`mm-segment-btn ${type === 'expense' ? 'active expense' : ''}`}
                 onClick={() => setType('expense')}
               >
-                <span>🛒</span> Chi Tiêu
+                <ArrowDownLeftIcon size={16} />
+                <span>Chi Tiêu</span>
               </button>
               <button
-                type="button"
-                className={`mm-type-btn mm-type-income ${type === 'income' ? 'active' : ''}`}
+                type='button'
+                role='radio'
+                aria-checked={type === 'income'}
+                className={`mm-segment-btn ${type === 'income' ? 'active income' : ''}`}
                 onClick={() => setType('income')}
               >
-                <span>💰</span> Thu Nhập
+                <ArrowUpRightIcon size={16} />
+                <span>Thu Nhập</span>
               </button>
             </div>
           </div>
 
-          {/* 2. Số tiền */}
-          <div className="mm-form-group">
-            <div className="mm-form-label-row">
-              <label htmlFor="edit-tx-amount" className="mm-form-label">
-                Số tiền (VNĐ) <span className="text-danger">*</span>
+          {/* Số tiền */}
+          <div className='mm-form-group'>
+            <div className='mm-form-label-row'>
+              <label htmlFor='edit-amount' className='mm-form-label'>
+                Số tiền (VNĐ) <span className='text-danger'>*</span>
               </label>
               {isValidAmount && (
-                <span className="mm-amount-preview">
-                  {new Intl.NumberFormat('vi-VN').format(parsedAmount)} ₫
+                <span className='mm-amount-preview'>
+                  {formatMoney(parsedAmount)}
                 </span>
               )}
             </div>
-            <div className="mm-amount-input-wrapper">
+            <div className='mm-amount-input-wrapper'>
               <input
-                id="edit-tx-amount"
-                type="number"
-                min="1"
-                step="any"
-                className="mm-input mm-amount-input"
+                id='edit-amount'
+                type='number'
+                inputMode='decimal'
+                min='1'
+                step='any'
+                className='mm-input mm-amount-input'
                 value={amount}
-                onChange={(e) => {
-                  setAmount(e.target.value);
-                  setFormError(null);
-                }}
+                onChange={(e) => setAmount(e.target.value)}
                 disabled={loading}
                 required
               />
-              <span className="mm-currency-suffix">₫</span>
+              <span className='mm-currency-suffix'>₫</span>
             </div>
           </div>
 
-          {/* 3. Danh mục */}
-          <div className="mm-form-group">
-            <label htmlFor="edit-tx-category" className="mm-form-label">
-              Danh mục <span className="mm-label-optional">(tùy chọn)</span>
+          {/* Danh mục */}
+          <div className='mm-form-group'>
+            <label htmlFor='edit-category' className='mm-form-label'>
+              Danh mục
             </label>
-            <select
-              id="edit-tx-category"
-              className="mm-input mm-select"
-              value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-              disabled={loading || categoriesLoading}
-            >
-              <option value="">-- Không chọn danh mục --</option>
-              {categoriesLoading ? (
-                <option disabled>Đang tải danh mục...</option>
-              ) : (
-                categories.map((cat) => (
+            <div className='mm-select-wrapper'>
+              <select
+                id='edit-category'
+                className='mm-input mm-select'
+                value={categoryId}
+                onChange={(e) => setCategoryId(e.target.value)}
+                disabled={loading || categoriesLoading}
+              >
+                <option value=''>-- Không chọn danh mục --</option>
+                {categories.map((cat) => (
                   <option key={cat.id} value={cat.id}>
-                    {cat.icon ? `${cat.icon} ` : '📁 '}
                     {cat.name}
                   </option>
-                ))
-              )}
-            </select>
+                ))}
+              </select>
+              <div className='mm-select-icon-right'>
+                <TagIcon size={16} />
+              </div>
+            </div>
           </div>
 
-          {/* 4. Ghi chú */}
-          <div className="mm-form-group">
-            <label htmlFor="edit-tx-note" className="mm-form-label">
-              Ghi chú <span className="mm-label-optional">(tùy chọn)</span>
+          {/* Ghi chú */}
+          <div className='mm-form-group'>
+            <label htmlFor='edit-note' className='mm-form-label'>
+              Ghi chú
             </label>
-            <input
-              id="edit-tx-note"
-              type="text"
-              className="mm-input"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              disabled={loading}
-              placeholder="Ghi chú chi tiết..."
-              maxLength={255}
-            />
+            <div className='mm-input-wrapper'>
+              <input
+                id='edit-note'
+                type='text'
+                className='mm-input'
+                placeholder='Nhập ghi chú giao dịch...'
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                disabled={loading}
+              />
+              <div className='mm-input-icon-right'>
+                <EditIcon size={16} />
+              </div>
+            </div>
           </div>
 
-          {/* 5. Ngày giao dịch */}
-          <div className="mm-form-group">
-            <label htmlFor="edit-tx-date" className="mm-form-label">
-              Ngày diễn ra <span className="text-danger">*</span>
+          {/* Ngày diễn ra */}
+          <div className='mm-form-group'>
+            <label htmlFor='edit-occurred-on' className='mm-form-label'>
+              Ngày diễn ra <span className='text-danger'>*</span>
             </label>
-            <input
-              id="edit-tx-date"
-              type="date"
-              className="mm-input"
-              value={occurredOn}
-              onChange={(e) => setOccurredOn(e.target.value)}
-              disabled={loading}
-              required
-            />
+            <div className='mm-input-wrapper'>
+              <input
+                id='edit-occurred-on'
+                type='date'
+                className='mm-input'
+                value={occurredOn}
+                onChange={(e) => setOccurredOn(e.target.value)}
+                disabled={loading}
+                required
+              />
+              <div className='mm-input-icon-right'>
+                <CalendarIcon size={16} />
+              </div>
+            </div>
           </div>
 
-          {/* Footer nút bấm */}
-          <div className="mm-modal-footer" style={{ padding: '1rem 0 0', margin: 0, border: 'none' }}>
+          {/* Footer Actions */}
+          <div className='mm-modal-footer'>
             <button
-              type="button"
-              className="mm-btn mm-btn-outline"
+              type='button'
+              className='mm-btn mm-btn-outline'
               onClick={onClose}
               disabled={loading}
             >
-              Hủy
+              Hủy bỏ
             </button>
             <button
-              type="submit"
-              className="mm-btn mm-btn-primary"
-              disabled={loading || !isValidAmount}
+              type='submit'
+              className='mm-btn mm-btn-primary'
+              disabled={loading}
             >
               {loading ? (
-                <span className="mm-btn-spinner-text">
-                  <span className="mm-spinner"></span> Đang lưu...
+                <span className='mm-btn-spinner-text'>
+                  <span className='mm-spinner'></span> Đang lưu...
                 </span>
               ) : (
-                '💾 Lưu Thay Đổi'
+                <>
+                  <CheckIcon size={16} />
+                  <span>Lưu Thay Đổi</span>
+                </>
               )}
             </button>
           </div>
