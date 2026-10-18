@@ -1,97 +1,138 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useTransactions } from '../../hooks/useTransactions';
+import { useCategories } from '../../hooks/useCategories';
 import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 import { EditTransactionModal } from './EditTransactionModal';
 import { formatMoney, formatDate } from '../../lib/format';
+import {
+  getCurrentMonthString,
+  generateMonthOptions,
+  formatMonthLabel,
+} from '../../lib/dateFilter';
 import type { TransactionListItem } from '../../types/database';
+import {
+  SearchIcon,
+  FilterIcon,
+  CalendarIcon,
+  TagIcon,
+  RefreshCwIcon,
+  PlusIcon,
+  EditIcon,
+  TrashIcon,
+  CheckIcon,
+  AlertCircleIcon,
+  DynamicCategoryIcon,
+} from '../ui/Icons';
 
 interface TransactionListProps {
-  /** Số lượng giao dịch tối đa cần tải (mặc định 50) */
   limit?: number;
-  /** Bộ lọc loại giao dịch (tùy chọn) */
   typeFilter?: 'income' | 'expense';
-  /** Trigger làm mới danh sách từ bên ngoài (ví dụ sau khi thêm giao dịch) */
   refreshTrigger?: number;
-  /** Callback kích hoạt hành động thêm giao dịch mới (khi danh sách rỗng) */
   onAddNewTransaction?: () => void;
+  categoryRefreshTrigger?: number;
 }
 
-/**
- * 1. Component SkeletonList hiển thị khi loading=true (đúng 4 dòng theo yêu cầu)
- */
 function SkeletonList() {
   return (
     <div
-      className="mm-skeleton-list"
-      role="status"
-      aria-busy="true"
-      aria-label="Đang tải danh sách giao dịch..."
+      className='mm-skeleton-list'
+      role='status'
+      aria-busy='true'
+      aria-label='Đang tải danh sách giao dịch...'
     >
       {[1, 2, 3, 4].map((item) => (
-        <div key={item} className="mm-skeleton-item">
-          <div className="mm-skeleton-icon" />
-          <div className="mm-skeleton-content">
-            <div className="mm-skeleton-line mm-skeleton-title" />
-            <div className="mm-skeleton-line mm-skeleton-subtitle" />
+        <div key={item} className='mm-skeleton-item'>
+          <div className='mm-skeleton-icon' />
+          <div className='mm-skeleton-content'>
+            <div className='mm-skeleton-line mm-skeleton-title' />
+            <div className='mm-skeleton-line mm-skeleton-subtitle' />
           </div>
-          <div className="mm-skeleton-amount" />
+          <div className='mm-skeleton-amount' />
         </div>
       ))}
     </div>
   );
 }
 
-/**
- * 2. Component EmptyState hiển thị khi mảng giao dịch rỗng kèm nút "Thêm giao dịch đầu tiên"
- */
-function EmptyState({ onAddClick }: { onAddClick: () => void }) {
+function EmptyState({
+  onAddClick,
+  hasActiveFilter,
+}: {
+  onAddClick: () => void;
+  hasActiveFilter?: boolean;
+}) {
   return (
-    <div className="mm-tx-empty-state">
-      <span className="mm-empty-icon">🍃</span>
-      <h4>Chưa có giao dịch nào</h4>
-      <p style={{ marginBottom: '1.25rem' }}>
-        Sổ thu chi của bạn hiện chưa có dữ liệu. Hãy thêm giao dịch đầu tiên để bắt đầu theo dõi dòng tiền!
+    <div className='mm-tx-empty-state'>
+      <div className='mm-empty-icon-wrap'>
+        <SearchIcon size={32} />
+      </div>
+      <h4>{hasActiveFilter ? 'Không tìm thấy giao dịch phù hợp' : 'Chưa có giao dịch nào'}</h4>
+      <p>
+        {hasActiveFilter
+          ? 'Không có giao dịch nào thỏa mãn bộ lọc hiện tại. Thử chọn tháng khác, đổi danh mục hoặc đặt lại bộ lọc.'
+          : 'Sổ thu chi của bạn hiện đang trống. Hãy thêm giao dịch đầu tiên để bắt đầu quản lý tài chính!'}
       </p>
       <button
-        type="button"
-        className="mm-btn mm-btn-primary mm-empty-add-btn"
+        type='button'
+        className='mm-btn mm-btn-primary mm-empty-add-btn'
         onClick={onAddClick}
       >
-        ➕ Thêm giao dịch đầu tiên
+        <PlusIcon size={16} />
+        <span>Thêm giao dịch mới</span>
       </button>
     </div>
   );
 }
 
-/**
- * Component hiển thị danh sách giao dịch tài chính cá nhân MoneyMate
- * Đã xử lý đủ 3 trạng thái: Loading (SkeletonList 4 dòng), Empty (EmptyState với nút thêm), List (formatMoney 1.500.000 đ)
- */
 export function TransactionList({
   limit = 50,
-  typeFilter,
+  typeFilter: initialTypeFilter,
   refreshTrigger,
   onAddNewTransaction,
+  categoryRefreshTrigger,
 }: TransactionListProps) {
-  // Hook truy vấn Supabase (giữ nguyên logic và RLS)
-  const { transactions, loading, error, refetch } = useTransactions({
+  const {
+    categories,
+    loading: categoriesLoading,
+    refetch: refetchCategories,
+  } = useCategories();
+
+  useEffect(() => {
+    if (categoryRefreshTrigger !== undefined && categoryRefreshTrigger > 0) {
+      refetchCategories();
+    }
+  }, [categoryRefreshTrigger, refetchCategories]);
+
+  const defaultMonth = useMemo(() => getCurrentMonthString(), []);
+  const {
+    transactions,
+    loading,
+    error,
+    refetch,
+    fetchFilteredTransactions,
+    selectedMonth,
+    selectedCategoryId,
+  } = useTransactions({
     limit,
-    type: typeFilter,
+    type: initialTypeFilter,
+    month: defaultMonth,
+    categoryId: '',
   });
 
-  // State quản lý việc sửa và xóa giao dịch
+  const [activeTypeTab, setActiveTypeTab] = useState<'all' | 'expense' | 'income'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [editingTransaction, setEditingTransaction] = useState<TransactionListItem | null>(null);
   const [deletingTransaction, setDeletingTransaction] = useState<TransactionListItem | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Tự động làm mới danh sách khi component cha kích hoạt refreshTrigger
+  const monthOptions = useMemo(() => generateMonthOptions(12, 1), []);
+
   useEffect(() => {
     if (refreshTrigger !== undefined && refreshTrigger > 0) {
       refetch();
     }
   }, [refreshTrigger, refetch]);
 
-  // Xử lý chuyển hướng / focus khi bấm "Thêm giao dịch đầu tiên"
   const handleAddNewTransaction = () => {
     if (onAddNewTransaction) {
       onAddNewTransaction();
@@ -104,7 +145,6 @@ export function TransactionList({
     }
   };
 
-  // Xử lý sau khi xóa thành công
   const handleDeleteSuccess = () => {
     setDeletingTransaction(null);
     refetch();
@@ -112,15 +152,55 @@ export function TransactionList({
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  // Xử lý sau khi sửa thành công
   const handleEditSuccess = () => {
     setEditingTransaction(null);
     refetch();
-    setToastMessage('Đã cập nhật thông tin giao dịch thành công!');
+    setToastMessage('Đã cập nhật giao dịch thành công!');
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  // Tính toán thống kê nhanh từ danh sách giao dịch
+  const handleMonthChange = (newMonth: string) => {
+    void fetchFilteredTransactions(newMonth, selectedCategoryId);
+  };
+
+  const handleCategoryChange = (newCatId: string) => {
+    void fetchFilteredTransactions(selectedMonth, newCatId);
+  };
+
+  const handleResetFilters = () => {
+    setSearchQuery('');
+    setActiveTypeTab('all');
+    void fetchFilteredTransactions(defaultMonth, '');
+  };
+
+  const isCustomFiltered =
+    selectedMonth !== defaultMonth || selectedCategoryId !== '' || searchQuery !== '' || activeTypeTab !== 'all';
+
+  const selectedCategoryObj = useMemo(
+    () => categories.find((c) => c.id === selectedCategoryId),
+    [categories, selectedCategoryId]
+  );
+
+  // Lọc ở client cho search query và type tab (all / expense / income)
+  const filteredTransactions = useMemo(() => {
+    let result = transactions;
+
+    if (activeTypeTab !== 'all') {
+      result = result.filter((t) => t.type === activeTypeTab);
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      result = result.filter(
+        (t) =>
+          (t.note && t.note.toLowerCase().includes(q)) ||
+          (t.category?.name && t.category.name.toLowerCase().includes(q))
+      );
+    }
+
+    return result;
+  }, [transactions, activeTypeTab, searchQuery]);
+
   const totalIncome = transactions
     .filter((t) => t.type === 'income')
     .reduce((sum, t) => sum + t.amount, 0);
@@ -132,41 +212,177 @@ export function TransactionList({
   const balance = totalIncome - totalExpense;
 
   return (
-    <div className="mm-card mm-transaction-card">
-      {/* Tiêu đề & Công cụ điều khiển */}
-      <div className="mm-card-header">
-        <div className="mm-tx-header-title">
-          <h3>Lịch Sử Giao Dịch</h3>
-          <span className="mm-badge badge-info">{transactions.length} bản ghi</span>
+    <div className='mm-card mm-transaction-card'>
+      {/* Header */}
+      <div className='mm-card-header'>
+        <div className='mm-tx-header-title'>
+          <div className='mm-header-icon-box'>
+            <FilterIcon size={18} />
+          </div>
+          <div>
+            <h3>Sổ Giao Dịch Thu / Chi</h3>
+            <p className='mm-header-subtitle'>
+              {filteredTransactions.length} giao dịch được hiển thị
+            </p>
+          </div>
         </div>
-        <button
-          type="button"
-          className="mm-btn mm-btn-sm mm-btn-outline"
-          onClick={() => refetch()}
-          disabled={loading}
-          title="Tải lại danh sách"
-        >
-          {loading ? '⏳ Đang tải...' : '🔄 Làm mới'}
-        </button>
+        <div className='mm-tx-header-actions'>
+          <button
+            type='button'
+            className='mm-btn mm-btn-sm mm-btn-outline'
+            onClick={() => refetch()}
+            disabled={loading}
+            title='Tải lại danh sách'
+          >
+            <RefreshCwIcon size={14} className={loading ? 'animate-spin' : ''} />
+            <span>{loading ? 'Đang tải...' : 'Làm mới'}</span>
+          </button>
+        </div>
       </div>
 
-      {/* Thông báo cập nhật / xóa thành công */}
+      {/* Filter Bar */}
+      <div className='mm-tx-filter-bar'>
+        <div className='mm-filter-controls'>
+          {/* Search Input */}
+          <div className='mm-filter-item mm-filter-search'>
+            <div className='mm-input-wrapper'>
+              <input
+                type='text'
+                className='mm-input mm-search-input'
+                placeholder='Tìm theo ghi chú, danh mục...'
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                autoComplete='off'
+              />
+              <div className='mm-input-icon-right'>
+                <SearchIcon size={16} />
+              </div>
+            </div>
+          </div>
+
+          {/* Month Dropdown */}
+          <div className='mm-filter-item'>
+            <div className='mm-select-wrapper'>
+              <select
+                id='filter-month-select'
+                className='mm-input mm-select mm-filter-select'
+                value={selectedMonth}
+                onChange={(e) => handleMonthChange(e.target.value)}
+                disabled={loading}
+                aria-label='Chọn tháng để lọc'
+              >
+                {monthOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              <div className='mm-select-icon-right'>
+                <CalendarIcon size={14} />
+              </div>
+            </div>
+          </div>
+
+          {/* Category Dropdown */}
+          <div className='mm-filter-item'>
+            <div className='mm-select-wrapper'>
+              <select
+                id='filter-category-select'
+                className='mm-input mm-select mm-filter-select'
+                value={selectedCategoryId}
+                onChange={(e) => handleCategoryChange(e.target.value)}
+                disabled={loading || categoriesLoading}
+                aria-label='Chọn danh mục để lọc'
+              >
+                <option value=''>Tất cả danh mục</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+              <div className='mm-select-icon-right'>
+                <TagIcon size={14} />
+              </div>
+            </div>
+          </div>
+
+          {/* Type Toggle Pills: Tất cả | Thu | Chi */}
+          <div className='mm-filter-type-pills' role='tablist' aria-label='Lọc loại giao dịch'>
+            <button
+              type='button'
+              className={`mm-type-pill ${activeTypeTab === 'all' ? 'active' : ''}`}
+              onClick={() => setActiveTypeTab('all')}
+            >
+              Tất cả
+            </button>
+            <button
+              type='button'
+              className={`mm-type-pill ${activeTypeTab === 'expense' ? 'active expense' : ''}`}
+              onClick={() => setActiveTypeTab('expense')}
+            >
+              Chi tiêu
+            </button>
+            <button
+              type='button'
+              className={`mm-type-pill ${activeTypeTab === 'income' ? 'active income' : ''}`}
+              onClick={() => setActiveTypeTab('income')}
+            >
+              Thu nhập
+            </button>
+          </div>
+
+          {/* Reset Filters Button */}
+          {isCustomFiltered && (
+            <button
+              type='button'
+              className='mm-btn mm-btn-sm mm-btn-outline mm-filter-reset-btn'
+              onClick={handleResetFilters}
+              disabled={loading}
+              title='Đặt lại bộ lọc'
+            >
+              Đặt lại
+            </button>
+          )}
+        </div>
+
+        {/* Filter Status Badge */}
+        <div className='mm-filter-status-info'>
+          <span className='mm-filter-status-tag'>
+            Lọc theo: <strong>{formatMonthLabel(selectedMonth)}</strong>
+            {selectedCategoryObj ? (
+              <>
+                {' '}• Danh mục: <strong>{selectedCategoryObj.name}</strong>
+              </>
+            ) : (
+              ' • Tất cả danh mục'
+            )}
+            {activeTypeTab !== 'all' && (
+              <> • Loại: <strong>{activeTypeTab === 'expense' ? 'Chi tiêu' : 'Thu nhập'}</strong></>
+            )}
+            {searchQuery && (
+              <> • Tìm kiếm: &ldquo;<strong>{searchQuery}</strong>&rdquo;</>
+            )}
+          </span>
+        </div>
+      </div>
+
+      {/* Notifications */}
       {toastMessage && (
-        <div className="mm-alert mm-alert-success" role="alert" style={{ marginBottom: '1rem' }}>
-          <span className="mm-alert-icon">✅</span>
-          <div className="mm-alert-content">{toastMessage}</div>
+        <div className='mm-alert mm-alert-success' role='status' aria-live='polite'>
+          <CheckIcon size={18} className='mm-alert-icon' />
+          <div className='mm-alert-content'>{toastMessage}</div>
         </div>
       )}
 
-      {/* Thông báo lỗi nếu có */}
       {error && (
-        <div className="mm-alert mm-alert-error" role="alert">
-          <span className="mm-alert-icon">⚠️</span>
-          <div className="mm-alert-content">
+        <div className='mm-alert mm-alert-error' role='alert'>
+          <AlertCircleIcon size={18} className='mm-alert-icon' />
+          <div className='mm-alert-content'>
             <p>{error}</p>
             <button
-              type="button"
-              className="mm-btn mm-btn-sm mm-btn-outline-danger"
+              type='button'
+              className='mm-btn mm-btn-sm mm-btn-outline-danger'
               onClick={() => refetch()}
               style={{ marginTop: '0.5rem' }}
             >
@@ -176,20 +392,20 @@ export function TransactionList({
         </div>
       )}
 
-      {/* Thanh thống kê tóm tắt nhanh (dùng formatMoney từ lib/format) */}
+      {/* Mini Summary Bar */}
       {!loading && transactions.length > 0 && (
-        <div className="mm-tx-summary-bar">
-          <div className="mm-tx-summary-item summary-income">
-            <span className="summary-label">Tổng thu:</span>
-            <span className="summary-value">+{formatMoney(totalIncome)}</span>
+        <div className='mm-tx-summary-bar'>
+          <div className='mm-tx-summary-item summary-income'>
+            <span className='summary-label'>Tổng thu tháng:</span>
+            <span className='summary-value tabular-nums'>+{formatMoney(totalIncome)}</span>
           </div>
-          <div className="mm-tx-summary-item summary-expense">
-            <span className="summary-label">Tổng chi:</span>
-            <span className="summary-value">-{formatMoney(totalExpense)}</span>
+          <div className='mm-tx-summary-item summary-expense'>
+            <span className='summary-label'>Tổng chi tháng:</span>
+            <span className='summary-value tabular-nums'>-{formatMoney(totalExpense)}</span>
           </div>
-          <div className="mm-tx-summary-item summary-balance">
-            <span className="summary-label">Dòng tiền ròng:</span>
-            <span className={`summary-value ${balance >= 0 ? 'text-success' : 'text-danger'}`}>
+          <div className='mm-tx-summary-item summary-balance'>
+            <span className='summary-label'>Dòng tiền ròng:</span>
+            <span className={`summary-value tabular-nums ${balance >= 0 ? 'text-success' : 'text-danger'}`}>
               {balance >= 0 ? '+' : ''}
               {formatMoney(balance)}
             </span>
@@ -197,84 +413,87 @@ export function TransactionList({
         </div>
       )}
 
-      {/* 3 TRẠNG THÁI CỦA DANH SÁCH */}
+      {/* List States */}
       {loading ? (
-        /* 1. Khi loading=true: Hiển thị SkeletonList đúng 4 dòng */
         <SkeletonList />
-      ) : transactions.length === 0 ? (
-        /* 2. Khi mảng giao dịch rỗng: Hiển thị EmptyState kèm nút "Thêm giao dịch đầu tiên" */
-        <EmptyState onAddClick={handleAddNewTransaction} />
+      ) : filteredTransactions.length === 0 ? (
+        <EmptyState
+          onAddClick={handleAddNewTransaction}
+          hasActiveFilter={isCustomFiltered}
+        />
       ) : (
-        /* 3. Danh sách giao dịch: Dùng formatMoney dạng "1.500.000 đ" */
-        <ul className="mm-tx-list">
-          {transactions.map((tx: TransactionListItem) => {
+        <ul className='mm-tx-list' aria-label='Danh sách giao dịch'>
+          {filteredTransactions.map((tx: TransactionListItem) => {
             const isExpense = tx.type === 'expense';
-            const categoryColor = tx.category?.color || (isExpense ? '#ef4444' : '#10b981');
+            const categoryColor = tx.category?.color || (isExpense ? '#f43f5e' : '#10b981');
 
             return (
-              <li key={tx.id} className="mm-tx-item">
-                {/* Icon phân biệt danh mục hoặc loại giao dịch */}
+              <li key={tx.id} className='mm-tx-item'>
                 <div
-                  className="mm-tx-icon-wrap"
+                  className='mm-tx-icon-wrap'
                   style={{
-                    backgroundColor: `${categoryColor}1a`,
+                    backgroundColor: `${categoryColor}15`,
                     color: categoryColor,
-                    borderColor: `${categoryColor}40`,
+                    borderColor: `${categoryColor}30`,
                   }}
                 >
-                  <span>{tx.category?.icon || (isExpense ? '🛒' : '💰')}</span>
+                  <DynamicCategoryIcon name={tx.category?.name || tx.category?.icon} size={18} />
                 </div>
 
-                {/* Nội dung chi tiết: Ghi chú, Danh mục, Ngày */}
-                <div className="mm-tx-info">
-                  <div className="mm-tx-title-row">
-                    <span className="mm-tx-note">
-                      {tx.note?.trim() || (isExpense ? 'Khoản chi tiêu' : 'Khoản thu nhập')}
+                <div className='mm-tx-info'>
+                  <div className='mm-tx-title-row'>
+                    <span className='mm-tx-note'>
+                      {tx.note?.trim() || (isExpense ? 'Chi tiêu' : 'Thu nhập')}
                     </span>
                     {tx.category && (
                       <span
-                        className="mm-badge mm-tx-category-badge"
+                        className='mm-badge mm-tx-category-badge'
                         style={{
-                          backgroundColor: `${categoryColor}20`,
+                          backgroundColor: `${categoryColor}15`,
                           color: categoryColor,
-                          border: `1px solid ${categoryColor}40`,
+                          borderColor: `${categoryColor}30`,
                         }}
                       >
                         {tx.category.name}
                       </span>
                     )}
                   </div>
-                  <span className="mm-tx-date">
-                    📅 {formatDate(tx.occurred_at || tx.occurred_on)}
-                  </span>
+                  <div className='mm-tx-date-row'>
+                    <CalendarIcon size={12} className='mm-date-icon' />
+                    <time dateTime={tx.occurred_at || tx.created_at || ''}>
+                      {formatDate(tx.occurred_at || tx.created_at || '')}
+                    </time>
+                  </div>
                 </div>
 
-                {/* 3. Số tiền thu (+) hoặc chi (-) hiển thị dạng "1.500.000 đ" qua formatMoney */}
-                <div className="mm-tx-amount-wrap">
-                  <span className={`mm-tx-amount ${isExpense ? 'amount-expense' : 'amount-income'}`}>
+                <div className='mm-tx-amount-section'>
+                  <span
+                    className={`mm-tx-amount tabular-nums ${isExpense ? 'amount-expense' : 'amount-income'}`}
+                  >
                     {isExpense ? '-' : '+'}
                     {formatMoney(tx.amount)}
                   </span>
-                </div>
 
-                {/* Nhóm nút thao tác: Sửa & Xóa */}
-                <div className="mm-tx-actions">
-                  <button
-                    type="button"
-                    className="mm-action-btn mm-edit-btn"
-                    title="Chỉnh sửa giao dịch"
-                    onClick={() => setEditingTransaction(tx)}
-                  >
-                    ✏️
-                  </button>
-                  <button
-                    type="button"
-                    className="mm-action-btn mm-delete-btn"
-                    title="Xóa giao dịch"
-                    onClick={() => setDeletingTransaction(tx)}
-                  >
-                    🗑️
-                  </button>
+                  <div className='mm-tx-actions'>
+                    <button
+                      type='button'
+                      className='mm-icon-btn mm-btn-edit'
+                      onClick={() => setEditingTransaction(tx)}
+                      aria-label={`Sửa giao dịch ${tx.note || ''}`}
+                      title='Sửa giao dịch'
+                    >
+                      <EditIcon size={15} />
+                    </button>
+                    <button
+                      type='button'
+                      className='mm-icon-btn mm-btn-delete'
+                      onClick={() => setDeletingTransaction(tx)}
+                      aria-label={`Xóa giao dịch ${tx.note || ''}`}
+                      title='Xóa giao dịch'
+                    >
+                      <TrashIcon size={15} />
+                    </button>
+                  </div>
                 </div>
               </li>
             );
@@ -282,21 +501,21 @@ export function TransactionList({
         </ul>
       )}
 
-      {/* Modal Xác nhận trước khi xóa */}
-      {deletingTransaction && (
-        <ConfirmDeleteModal
-          transaction={deletingTransaction}
-          onClose={() => setDeletingTransaction(null)}
-          onSuccess={handleDeleteSuccess}
-        />
-      )}
-
-      {/* Modal Chỉnh sửa giao dịch */}
+      {/* Edit Modal */}
       {editingTransaction && (
         <EditTransactionModal
           transaction={editingTransaction}
           onClose={() => setEditingTransaction(null)}
           onSuccess={handleEditSuccess}
+        />
+      )}
+
+      {/* Confirm Delete Modal */}
+      {deletingTransaction && (
+        <ConfirmDeleteModal
+          transaction={deletingTransaction}
+          onClose={() => setDeletingTransaction(null)}
+          onSuccess={handleDeleteSuccess}
         />
       )}
     </div>

@@ -27,7 +27,13 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
-  if (!session) {
+  // Cho phép truy cập chế độ xem trước qua cờ ?preview=true hoặc localStorage mm-dev-preview
+  const isDevPreview =
+    typeof window !== 'undefined' &&
+    (window.location.search.includes('preview=true') ||
+      localStorage.getItem('mm-dev-preview') === 'true');
+
+  if (!session && !isDevPreview) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 

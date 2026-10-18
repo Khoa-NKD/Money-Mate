@@ -62,16 +62,6 @@ export interface UpdateCategoryInput {
   icon?: string | null;
 }
 
-/**
- * Dữ liệu đầu vào khi tạo mới Transaction
- */
-export interface CreateTransactionInput {
-  category_id?: string | null;
-  amount: number;
-  type: TransactionType;
-  note?: string | null;
-  occurred_at?: string;
-}
 
 /**
  * Dữ liệu đầu vào khi cập nhật Transaction
