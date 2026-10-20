@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="[https://money-mate-pi-coral.vercel.app](https://money-mate-finance.vercel.app/)" target="_blank">
+  <a href="https://money-mate-finance.vercel.app/" target="_blank">
     <img src="https://img.shields.io/badge/Live_Demo-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white" alt="Live Demo" />
   </a>
   <a href="https://react.dev/" target="_blank">
