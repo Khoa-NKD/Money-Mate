@@ -210,6 +210,29 @@ npm run lint
 npm run build
 ```
 
+### 7. Khởi Chạy Bằng Docker Compose (Localhost)
+
+Dự án tích hợp sẵn tệp cấu hình Multi-stage Docker và Nginx Alpine phục vụ môi trường chạy Production-like ngay trên máy cục bộ:
+
+```bash
+# 1. Đảm bảo file .env đã cấu hình VITE_SUPABASE_URL và VITE_SUPABASE_ANON_KEY
+
+# 2. Xây dựng image và khởi chạy container
+docker compose up -d --build
+
+# 3. Kiểm tra trạng thái container & healthcheck
+docker compose ps
+
+# 4. Xem logs thời gian thực
+docker compose logs -f
+
+# 5. Dừng container
+docker compose down
+```
+
+Truy cập ứng dụng ngay tại: `http://localhost:8080` (Cổng mặc định là `8080`, có thể tùy chỉnh thông qua biến `PORT` trong tệp `.env`).
+
+
 ---
 
 ## ☁️ Triển Khai Lên Vercel (Deployment)
