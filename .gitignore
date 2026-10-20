@@ -36,3 +36,6 @@ Desktop.ini
 .agent/
 .antigravity/
 .system_generated/
+
+# Supabase CLI temp
+supabase/.temp/
